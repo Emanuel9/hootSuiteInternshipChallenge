@@ -2,18 +2,19 @@
 __author__ = 'Emanuel'
 
 from collections import  OrderedDict
-import sys
 
+import sys
 import wikipedia
 
 from pymongo import MongoClient
 
 import bson.json_util
-import  json
+import json
 
-import  flask
+import flask
 from flask.views import  MethodView
 from flask import request
+
 app = flask.Flask(__name__)
 
 
@@ -29,16 +30,16 @@ class RenderJSONWikipediaData(flask.views.MethodView):
         user_request = WikipediaAPI(day)
         user_request.create_connection()
 
-        print(user_request.check_if_data_already_exist_in_mongo_db(day), sys.stderr)
-
         if user_request.check_if_data_already_exist_in_mongo_db(day):
-            print(11, sys.stderr)
             user_request.store_in_local_json(day)
-
             user_request.insert_to_mongo(OrderedDict(sorted(user_request.json_obj.items())))
 
+        output_json = user_request.get_from_mongo_by_day_year_category(year, day, category)
+
         user_request.close_connection()
-        return user_request.get_from_mongo_by_day_year_category(year, day, category)
+
+        return output_json
+
 
 app.add_url_rule('/', view_func=RenderJSONWikipediaData.as_view('main'))
 
@@ -111,7 +112,10 @@ class WikipediaAPI(object):
         if year is None:
             cursor = self.db.pages.find({"day" : day}, {"_id" : 0, category : []})
         else:
+            # cursor = self.db.pages.aggregate([{"$match" : {"births.year": year}}])
+            # print cursor
             cursor = self.db.pages.find({"day" : day}, {"_id" : 0, category : { '$elemMatch' : {'year' : year}}})
+
 
 
         output =  json.dumps({'results' :  list(cursor), 'day' : day}, default= bson.json_util.default, indent=4, separators=(',', ': '))
