@@ -30,7 +30,7 @@ class RenderJSONWikipediaData(flask.views.MethodView):
         user_request = WikipediaAPI(day)
         user_request.create_connection()
 
-        if user_request.check_if_data_already_exist_in_mongo_db(day):
+        if user_request.check_if_i_can_add_daypages__in_mongo_db(day):
             user_request.store_in_local_json(day)
             user_request.insert_to_mongo(OrderedDict(sorted(user_request.json_obj.items())))
 
@@ -96,7 +96,7 @@ class WikipediaAPI(object):
         self.db.pages.insert_one(json)
 
 
-    def check_if_data_already_exist_in_mongo_db(self, day):
+    def check_if_i_can_add_daypages__in_mongo_db(self, day):
         records = self.db.pages.find({"day" : day}).count()
         if records > 0:
             return False
