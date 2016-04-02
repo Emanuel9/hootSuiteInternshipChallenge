@@ -38,8 +38,7 @@ Pasi
 datele local, creez un document in JSON cu ele, il inserez in baza de date mongo apoi ii intorc userului ce a cerut.
 4. Ma deconectez de la baza de date mongo
 
-Early release
-######################################################
+
 
 
 

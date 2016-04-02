@@ -1,9 +1,10 @@
 # This Python file uses the following encoding: utf-8
 __author__ = 'Emanuel'
 
+import sys
 from collections import  OrderedDict
 
-import sys
+
 import wikipedia
 
 from pymongo import MongoClient
@@ -14,7 +15,6 @@ import json
 import flask
 from flask.views import  MethodView
 from flask import request
-
 app = flask.Flask(__name__)
 
 
@@ -77,7 +77,7 @@ class WikipediaAPI(object):
     def store_holidays_and_observances_of_requested_day(self, day):
         for holiday_and_observance in iter(self.holidays_and_observances.splitlines()):
             if holiday_and_observance is not '':
-                self.json_obj["results"].append({ "title": holiday_and_observance, "year" : -1, "day" : day, "category" : "holiday_and_observance" })
+                self.json_obj["results"].append({ "title": holiday_and_observance, "year" : -1, "day" : day, "category" : "holidays_and_observances" })
 
     def store_in_local_json(self, day):
         self.store_events_of_requested_day(day)
@@ -105,20 +105,41 @@ class WikipediaAPI(object):
 
     def get_from_mongo_by_day_year_category(self, year, day, category):
         if category is None:
-            cursor = self.db.pages.aggregate([
-                {'$match' : {"day" : day}},
-                {'$unwind' : "$results"},
-                {'$project' : {"_id" : 0, "results.category" : 1, "results.year" : 1, "results.title" : 1, "day" : 1}},
-            ])
+
+            #All from a day
+            if year is None:
+                cursor = self.db.pages.aggregate([
+                    {'$match' : {"day" : day}},
+                    {'$unwind' : "$results"},
+                    {'$project' : {"_id" : 0, "results.category" : 1, "results.year" : 1, "results.title" : 1, "day" : 1}},
+                ])
+            else:
+                #All from a day and an year
+                cursor = self.db.pages.aggregate([
+                    {'$match' : {"day" : day}},
+                    {'$unwind' : "$results"},
+                    {'$match' : {"results.year" : year}},
+                    {'$project' : {"_id" : 0, "results.category" : 1, "results.year" : 1, "results.title" : 1, "day" : 1}},
+                ])
 
 
         else:
-            cursor = self.db.pages.aggregate([
-                        {'$match' : {"day" : day}},
-                        {'$unwind' : "$results"},
-                        {'$match' : {"results.year" : year, "results.category" : category}},
-                        {'$project' : {"_id" : 0, "results.category" : 1, "results.year" : 1, "results.title" : 1, "day" : 1}},
-            ])
+            #All from a category and from all years
+            if year is None:
+                cursor = self.db.pages.aggregate([
+                            {'$match' : {"day" : day}},
+                            {'$unwind' : "$results"},
+                            {'$match' : {"results.category" : category}},
+                            {'$project' : {"_id" : 0, "results.category" : 1, "results.year" : 1, "results.title" : 1, "day" : 1}},
+                ])
+            #All from a category and an year
+            else:
+                cursor = self.db.pages.aggregate([
+                            {'$match' : {"day" : day}},
+                            {'$unwind' : "$results"},
+                            {'$match' : {"results.year" : year, "results.category" : category}},
+                            {'$project' : {"_id" : 0, "results.category" : 1, "results.year" : 1, "results.title" : 1, "day" : 1}},
+                ])
 
         output =  json.dumps({'search_results' :  list(cursor)}, default= bson.json_util.default, indent=4, separators=(',', ': '))
         return output
