@@ -4,8 +4,8 @@ __author__ = 'Emanuel'
 import sys
 from collections import  OrderedDict
 
-
 import wikipedia
+
 
 from pymongo import MongoClient
 
