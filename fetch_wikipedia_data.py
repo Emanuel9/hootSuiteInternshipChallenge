@@ -54,35 +54,30 @@ class WikipediaAPI(object):
         self.deaths = self.content_of_page[self.content_of_page.find('== Deaths ==') + len('== Deaths ==\n'):self.content_of_page.find('== Holidays and observances ==')]
         self.holidays_and_observances = self.content_of_page[self.content_of_page.find('== Holidays and observances ==') + len('== Holidays and observances ==\n')  : self.content_of_page.find('== External links ==')]
         self.json_obj["day"] = day
-        self.json_obj["events"] = []
-        self.json_obj["births"] = []
-        self.json_obj["deaths"] = []
-        self.json_obj["holidays_and_observances"] = []
-
-
+        self.json_obj["results"] = []
 
     def store_events_of_requested_day(self, day):
         for event in iter(self.events.splitlines()):
             an_event = event.split(" ", 1)
             if len(an_event) == 2:
-                self.json_obj["events"].append({"year": an_event[0], "title": an_event[1]})
+                self.json_obj["results"].append({ "title": an_event[1], "year": an_event[0], "day" : day, "category" : "events" })
 
     def store_births_of_requested_day(self, day):
         for birth in iter(self.births.splitlines()):
             a_birth = birth.split(" ", 1)
             if len(a_birth) == 2:
-                self.json_obj["births"].append({"year": a_birth[0], "title": a_birth[1]})
+                self.json_obj["results"].append({ "title": a_birth[1], "year": a_birth[0], "day" : day, "category" : "births" })
 
     def store_deaths_of_requested_day(self, day):
         for death in iter(self.deaths.splitlines()):
             a_death = death.split(" ", 1)
             if len(a_death) == 2:
-                self.json_obj["deaths"].append({"year": a_death[0], "title": a_death[1]})
+                self.json_obj["results"].append({ "title": a_death[1], "year": a_death[0], "day" : day, "category" : "deaths" })
 
     def store_holidays_and_observances_of_requested_day(self, day):
         for holiday_and_observance in iter(self.holidays_and_observances.splitlines()):
             if holiday_and_observance is not '':
-                self.json_obj["holidays_and_observances" ].append({"title" : holiday_and_observance})
+                self.json_obj["results"].append({ "title": holiday_and_observance, "year" : -1, "day" : day, "category" : "holiday_and_observance" })
 
     def store_in_local_json(self, day):
         self.store_events_of_requested_day(day)
@@ -109,24 +104,28 @@ class WikipediaAPI(object):
 
 
     def get_from_mongo_by_day_year_category(self, year, day, category):
-        if year is None:
-            cursor = self.db.pages.find({"day" : day}, {"_id" : 0, category : []})
+        if category is None:
+            cursor = self.db.pages.aggregate([
+                {'$match' : {"day" : day}},
+                {'$unwind' : "$results"},
+                {'$project' : {"_id" : 0, "results.category" : 1, "results.year" : 1, "results.title" : 1, "day" : 1}},
+            ])
+
+
         else:
-            # cursor = self.db.pages.aggregate([{"$match" : {"births.year": year}}])
-            # print cursor
-            cursor = self.db.pages.find({"day" : day}, {"_id" : 0, category : { '$elemMatch' : {'year' : year}}})
+            cursor = self.db.pages.aggregate([
+                        {'$match' : {"day" : day}},
+                        {'$unwind' : "$results"},
+                        {'$match' : {"results.year" : year, "results.category" : category}},
+                        {'$project' : {"_id" : 0, "results.category" : 1, "results.year" : 1, "results.title" : 1, "day" : 1}},
+            ])
 
-
-
-        output =  json.dumps({'results' :  list(cursor), 'day' : day}, default= bson.json_util.default, indent=4, separators=(',', ': '))
+        output =  json.dumps({'search_results' :  list(cursor)}, default= bson.json_util.default, indent=4, separators=(',', ': '))
         return output
 
 
 if __name__ == "__main__":
     app.debug = True
     app.run()
-
-
-
 
 
