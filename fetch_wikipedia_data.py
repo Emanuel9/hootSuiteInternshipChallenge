@@ -27,10 +27,11 @@ class RenderJSONWikipediaData(flask.views.MethodView):
         category = request.args.get('category')
 
 
-        user_request = WikipediaAPI(day)
+        user_request = WikipediaAPI()
         user_request.create_connection()
 
         if user_request.check_if_i_can_add_daypages__in_mongo_db(day):
+            user_request.fetch_data_from_wikipedia(day)
             user_request.store_in_local_json(day)
             user_request.insert_to_mongo(OrderedDict(sorted(user_request.json_obj.items())))
 
@@ -45,7 +46,7 @@ app.add_url_rule('/', view_func=RenderJSONWikipediaData.as_view('main'))
 
 
 class WikipediaAPI(object):
-    def __init__(self, day):
+    def fetch_data_from_wikipedia(self, day):
         self.json_obj = {}
         self.page = wikipedia.page(title=day, preload=False)
         self.content_of_page = self.page.content.encode('ascii', 'ignore')
